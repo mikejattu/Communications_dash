@@ -5,12 +5,6 @@ import dash_molstar
 from dash import html
 from dash_molstar.utils import molstar_helper
 
-with open('pages/text.json') as f:
-    data = json.load(f)
-    desc = data['desc']
-    virus_desc = data['virus_desc']
-virus_3d = molstar_helper.parse_url("https://molstar.org/demos/states/sars-cov-2_virion.molx", mol=False)
-
 def get_sidebar(active_item=None):
     nav = html.Nav(id="sidebar", className="active", children=[
         html.Div(className="custom-menu", children=[
