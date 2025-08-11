@@ -25,9 +25,8 @@ def get_sidebar(active_item=None):
                 html.Span("SARS-CoV-2", className='fs-4'),
             ], className='d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none', href='/'),
             html.Hr(),
-            dbc.NavItem(dbc.NavLink("Overview", href="/", className='text-white', active=True if active_item=='pages.home' else False)),
-            dbc.NavItem(dbc.NavLink("Genome & Proteins", href="/proteins", className='text-white', active=True if active_item=='pages.proteins' else False)),
-            dbc.NavItem(dbc.NavLink("Therapeutics", href="/drugs", className='text-white', active=True if active_item=='pages.drugs' else False)),
+            dbc.NavItem(dbc.NavLink("Main GUI", href="/", className='text-white', active=True if active_item=='pages.home' else False)),
+            dbc.NavItem(dbc.NavLink("Configurations", href="/opcua", className='text-white', active=True if active_item=='pages.opcua' else False)),
             dbc.NavItem(dbc.NavLink("About", href="/about", className='text-white', active=True if active_item=='pages.about' else False))
         ])
     ])
