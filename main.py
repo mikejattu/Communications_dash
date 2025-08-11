@@ -1,7 +1,7 @@
 import dash
-from dash import Dash
+from dash import Dash, html, clientside_callback, Input, Output
 from flask import Flask
-from pages import drugs, home, proteins, about
+from pages import opcua, home, about
 
 index_str = """<!DOCTYPE html>
 <html>
@@ -16,7 +16,6 @@ index_str = """<!DOCTYPE html>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-
         gtag('config', 'G-LCWNJQRXQH');
         </script>
         <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0ded497d3a654a6daab165aabc396559"}'></script>
@@ -53,29 +52,51 @@ dash_app = Dash(__name__,
             'rel': 'stylesheet'
         }]
     )
+
+# Register pages
 dash.register_page('pages.homepage',
     path='/',
     title='SARS-CoV-2 Overview',
     name='SARS-CoV-2 Overview',
     layout=home.layout)
-dash.register_page('pages.proteins',
-    path='/proteins',
-    title='Virus Composition',
-    name='Virus Composition',
-    layout=proteins.layout)
-dash.register_page('pages.drugs',
-    path='/drugs',
-    title='Therapeutics',
-    name='Therapeutics',
-    layout=drugs.layout)
+dash.register_page('pages.opcua',
+    path='/opcua',
+    title='Configurations',
+    name='Configurations',
+    layout=opcua.layout)
 dash.register_page('pages.about',
     path='/about',
     title='About',
     name='About',
     layout=about.layout)
 
+# Add clientside callback for sidebar toggle
+clientside_callback(
+    """
+    function(n_clicks) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('active');
+            
+            // Adjust content margin when sidebar is toggled
+            const content = document.querySelector('.content');
+            if (content) {
+                if (sidebar.classList.contains('active')) {
+                    content.style.marginLeft = '270px';
+                } else {
+                    content.style.marginLeft = '0';
+                }
+            }
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('sidebarCollapse', 'data-dummy'),  # Dummy output
+    Input('sidebarCollapse', 'n_clicks'),
+)
+
 with app.app_context():
     dash_app.layout = dash.page_container
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=8052)

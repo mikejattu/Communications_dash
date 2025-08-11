@@ -40,9 +40,16 @@ body {
       bottom: 10px!important
   }
 }
+#sidebar .custom-menu {
+  display: inline-block !important; /* Overrides any hiding */
+}
+
+/* Adjust position for large screens */
 @media(min-width: 1400px) {
   #sidebar .custom-menu {
-      display: none !important;
+    bottom: 20px;
+    right: 10px;
+    margin-right: 0;
   }
 }
 
