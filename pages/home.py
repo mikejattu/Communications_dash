@@ -17,7 +17,7 @@ def get_sidebar(active_item=None):
             html.Button([
                 html.I(className="fa fa-bars"),
                 html.Span("Toggle Menu", className="sr-only")
-            ], type="button", id="sidebarCollapse", className="btn btn-primary")
+            ], type="button", id="sidebarCollapse", className="btn btn-primary", n_clicks=0)
         ]),
         html.Div(className="flex-column p-4 nav nav-pills", children=[
             html.A([
