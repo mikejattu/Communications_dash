@@ -13,8 +13,8 @@ def layout():
             html.Div([
                 html.Img(src='https://webstatic.everburstsun.net/dash-molstar-example/sars-cov-2-fusion.jpg', alt='sars-cov-2-fusion', className="banner-image"),
                 html.Div([
-                    html.Span(['By ', html.I('David S. Goodsell')]),
-                    html.H5('SARS-CoV-2 Fusion')
+                    html.Span(['By ', html.I('Mike Jattu')], className='author'),
+                    html.H5('Oil Sands Level Detection', className='title'),
                 ], className='alt-text'),
                 html.Div([
                     html.H1("About This Site"),
