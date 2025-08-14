@@ -5,6 +5,7 @@ from dash import Input, Output, ctx, dcc, html, State
 from .home import get_sidebar
 
 def layout():
+    # banner
     banner = dbc.Row([
         dbc.Col([
             html.Div([

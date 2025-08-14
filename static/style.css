@@ -3,7 +3,7 @@ body {
 }
 .content {
   @media (min-width: 1400px) {
-    margin-left: 270px !important;
+    margin-left: 10px !important;
   }
   padding-top: 10px;
 }
@@ -109,6 +109,8 @@ body {
 .banner-container {
   width: 100%;
   display: flex;
+  position: relative;
+  height: 200px;
   align-items: flex-end;
   background-color: black;
   overflow: hidden;
