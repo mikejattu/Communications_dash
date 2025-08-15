@@ -3,6 +3,11 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, ctx, dcc, html, State
 from .home import get_sidebar
+import asyncua
+from asyncua import ua
+from .communication import OPCUAClientManager
+
+opcua_manager = OPCUAClientManager()
 
 def layout():
     # banner
@@ -73,7 +78,7 @@ def layout():
                     ])
                 ], width=12)
             ])
-        ], label="Client Connection", tab_id="tab-client", disabled=True, className="disabled-tab"),
+        ], label="Client Connection", tab_id="tab-client", disabled=False, className="disabled-tab"),
         
         # Video Configuration Tab
         dbc.Tab([
@@ -81,7 +86,73 @@ def layout():
                 dbc.Col([
                     dbc.Card([
                         dbc.CardBody([
-                            html.H4("Video Configuration", className="card-title"),
+                            html.H4("Video Configuration for Hopper 1", className="card-title"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.H5("Camera Controls"),
+                                    dbc.Label("Pitch", className="mt-2"),
+                                    dcc.Slider(id='camera-pitch', min=-90, max=90, value=0, step=1, marks=None, tooltip={"placement": "bottom"}),
+                                    dbc.Label("Yaw", className="mt-3"),
+                                    dcc.Slider(id='camera-yaw', min=-180, max=180, value=0, step=1, marks=None, tooltip={"placement": "bottom"}),
+                                ], md=4),
+                                
+                                dbc.Col([
+                                    html.H5("Video Sources"),
+                                    dbc.Tabs([
+                                        dbc.Tab([
+                                            dbc.Input(id='video-url', placeholder="RTSP/HTTP video URL", className="mb-3"),
+                                            dbc.Button("Connect to Stream", id='connect-stream', color="primary", className="w-100"),
+                                        ], label="Network Stream"),
+                                        
+                                        dbc.Tab([
+                                            dcc.Upload(
+                                                id='upload-video',
+                                                children=html.Div([
+                                                    'Drag and drop video file or ',
+                                                    html.A('select file')
+                                                ]),
+                                                className="upload-box p-5 text-center",
+                                                style={'border': '2px dashed #ccc', 'borderRadius': '5px'}
+                                            ),
+                                        ], label="File Upload")
+                                    ]),
+                                    html.Div(id='video-preview-container', className="mt-3")
+                                ], md=8)
+                            ]),
+                            html.H4("Video Configuration for Hopper 2", className="card-title"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.H5("Camera Controls"),
+                                    dbc.Label("Pitch", className="mt-2"),
+                                    dcc.Slider(id='camera-pitch', min=-90, max=90, value=0, step=1, marks=None, tooltip={"placement": "bottom"}),
+                                    dbc.Label("Yaw", className="mt-3"),
+                                    dcc.Slider(id='camera-yaw', min=-180, max=180, value=0, step=1, marks=None, tooltip={"placement": "bottom"}),
+                                ], md=4),
+                                
+                                dbc.Col([
+                                    html.H5("Video Sources"),
+                                    dbc.Tabs([
+                                        dbc.Tab([
+                                            dbc.Input(id='video-url', placeholder="RTSP/HTTP video URL", className="mb-3"),
+                                            dbc.Button("Connect to Stream", id='connect-stream', color="primary", className="w-100"),
+                                        ], label="Network Stream"),
+                                        
+                                        dbc.Tab([
+                                            dcc.Upload(
+                                                id='upload-video',
+                                                children=html.Div([
+                                                    'Drag and drop video file or ',
+                                                    html.A('select file')
+                                                ]),
+                                                className="upload-box p-5 text-center",
+                                                style={'border': '2px dashed #ccc', 'borderRadius': '5px'}
+                                            ),
+                                        ], label="File Upload")
+                                    ]),
+                                    html.Div(id='video-preview-container', className="mt-3")
+                                ], md=8)
+                            ]),
+                        html.H4("Video Configuration for Hopper 1", className="card-title"),
                             dbc.Row([
                                 dbc.Col([
                                     html.H5("Camera Controls"),
@@ -125,7 +196,7 @@ def layout():
             dbc.Row([
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardBody([
+                        dbc.CardBody([                            
                             html.H4("Node Subscriptions", className="card-title"),
                             dbc.Row([
                                 dbc.Col([
@@ -196,18 +267,21 @@ def layout():
     prevent_initial_call=True
 )
 def connect_to_server(n_clicks, name, url, username, password):
+    print("Connecting to server...")
     if not url:
         return dbc.Alert("Endpoint URL is required", color="danger"), dash.no_update, True, dash.no_update
     
-    try:
-        # Simulate connection - replace with actual OPC UA client code
+    success, message = opcua_manager.connect(url, username, password)
+    
+    if success:
+        print(f"Connected to server: {name or 'Unnamed Server'} at {url}")
         connection_status = {
             'connected': True,
             'server_name': name or "Unnamed Server",
             'endpoint': url,
             'timestamp': dash.callback_context.timestamp
         }
-        
+        print(f"Connection status updated: {connection_status}")
         status = dbc.Alert(
             [
                 html.I(className="bi bi-check-circle-fill me-2"),
@@ -217,11 +291,10 @@ def connect_to_server(n_clicks, name, url, username, password):
             className="d-flex align-items-center"
         )
         
-        # Enable client tab and switch to it
         return status, connection_status, False, "tab-client"
-    
-    except Exception as e:
-        return dbc.Alert(f"Connection failed: {str(e)}", color="danger"), {'connected': False}, True, dash.no_update
+    else:
+        return dbc.Alert(f"Connection failed: {message}", color="danger"), {'connected': False}, True, dash.no_update
+
 
 @dash.callback(
     Output('subscription-status', 'children'),
@@ -246,20 +319,28 @@ def manage_subscriptions(node_click, nodes_click, node_id, level, confidence, se
     
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
+    def create_subscription_row(node_id, node_type=None):
+        success, message = opcua_manager.subscribe_to_node(node_id)
+        if success:
+            value, _ = opcua_manager.read_node_value(node_id)
+            return dbc.Tr([
+                dbc.Td(node_id),
+                dbc.Td(node_type or "Generic"),
+                dbc.Td("Subscribed"),
+                dbc.Td(str(value)),
+                dbc.Td(dbc.Button("Unsubscribe", color="danger", size="sm", id={'type': 'unsubscribe-btn', 'index': node_id}))
+            ])
+        else:
+            return None
+    
     if triggered_id == 'subscribe-node' and node_id:
-        # Single node subscription
-        new_row = dbc.Tr([
-            dbc.Td(node_id),
-            dbc.Td("Subscribed"),
-            dbc.Td("--"),
-            dbc.Td(dbc.Button("Unsubscribe", color="danger", size="sm"))
-        ])
-        
-        # Update table - in a real app, you'd maintain state properly
-        return dbc.Alert(f"Subscribed to node {node_id}", color="success"), new_row
+        new_row = create_subscription_row(node_id)
+        if new_row:
+            return dbc.Alert(f"Subscribed to node {node_id}", color="success"), new_row
+        else:
+            return dbc.Alert(f"Failed to subscribe to node {node_id}", color="danger"), dash.no_update
     
     elif triggered_id == 'subscribe-nodes':
-        # Multi-node subscription
         nodes = []
         if level: nodes.append(("Level", level))
         if confidence: nodes.append(("Confidence", confidence))
@@ -270,21 +351,20 @@ def manage_subscriptions(node_click, nodes_click, node_id, level, confidence, se
             return dbc.Alert("No nodes specified", color="warning"), dash.no_update
         
         rows = []
-        for node_type, node_id in nodes:
-            rows.append(dbc.Tr([
-                dbc.Td(node_id),
-                dbc.Td(node_type),
-                dbc.Td("Subscribed"),
-                dbc.Td("--"),
-                dbc.Td(dbc.Button("Unsubscribe", color="danger", size="sm"))
-            ]))
+        success_count = 0
+        for node_type, n_id in nodes:
+            row = create_subscription_row(n_id, node_type)
+            if row:
+                rows.append(row)
+                success_count += 1
         
         table = dbc.Table(
             [html.Thead(html.Tr([html.Th("Node ID"), html.Th("Type"), html.Th("Status"), html.Th("Value"), html.Th("Action")]))] + rows,
             bordered=True, hover=True, responsive=True
         )
         
-        return dbc.Alert(f"Subscribed to {len(nodes)} nodes", color="success"), table
+        return dbc.Alert(f"Subscribed to {success_count}/{len(nodes)} nodes", 
+                        color="success" if success_count == len(nodes) else "warning"), table
     
     return dash.no_update, dash.no_update
 
@@ -298,27 +378,28 @@ def update_graph(n_intervals, subscriptions, connection):
     if not connection.get('connected'):
         return dash.no_update
     
-    # In a real app, you would get actual node values here
     import plotly.graph_objects as go
-    from random import random
     
     fig = go.Figure()
     
-    # Simulate some data
     if subscriptions and isinstance(subscriptions, list) and len(subscriptions) > 1:
         for row in subscriptions[1:]:  # Skip header
             node_id = row.props['children'][0].props['children']
-            fig.add_trace(go.Scatter(
-                x=list(range(10)),
-                y=[random() * 100 for _ in range(10)],
-                name=node_id,
-                mode='lines+markers'
-            ))
+            value, error = opcua_manager.read_node_value(node_id)
+            
+            if not error:
+                # In a real app, you'd want to maintain history
+                fig.add_trace(go.Scatter(
+                    x=[n_intervals],
+                    y=[value],
+                    name=node_id,
+                    mode='lines+markers'
+                ))
     
     fig.update_layout(
         margin={'l': 40, 'r': 10, 't': 30, 'b': 30},
         showlegend=True,
-        uirevision='constant'  # Preserves UI state during updates
+        uirevision='constant'
     )
     
     return fig
